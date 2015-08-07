@@ -7,7 +7,6 @@ var TouchScroller = function(parentElement, callback, givenTouchProvider){
 
     var doTouchStart = function (e) {
             scroller.doTouchStart(e.touches, e.timeStamp);
-            e.preventDefault();
         },
         doTouchMove =  function (e) {
             scroller.doTouchMove(e.touches, e.timeStamp, e.scale);
@@ -92,7 +91,7 @@ var TouchScroller = function(parentElement, callback, givenTouchProvider){
         disconnect: disconnect,
         setDimensions: setDimensions,
         scrollTo: scrollTo
-    }
-}
+    };
+};
 
 module.exports = TouchScroller;

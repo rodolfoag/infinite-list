@@ -2,7 +2,7 @@ var Scroller = require('../vendor/zynga-scroller/Scroller.js'),
     Layer = require('./Layer'),
     LayersPool = require('./layerPool'),
     TouchScroller = require('./TouchScroller'),
-    StyleHelpers = require('./StyleHelpers');
+    StyleHelpers = require('./StyleHelpers'),
     DEFAULT_ITEM_HEIGHT = 40,
     MIN_FPS = 30;
 
@@ -16,8 +16,9 @@ var InfiniteList = function (listConfig) {
             loadMoreRenderer: function(index, domElement){
                 domElement.innerHTML = 'Loading...';
             },
-            hasMore: false,
-            itemsCount: 0
+            hasMore: function () {
+                return false;
+            },
         },
         parentElement = null,
         rootElement = null,
@@ -34,15 +35,10 @@ var InfiniteList = function (listConfig) {
         needsRender = true,
         measuredFPS = 60;
 
-    for (key in listConfig){
+    for (var key in listConfig){
         if (listConfig.hasOwnProperty(key)){
             config[key] = listConfig[key];
         }
-    }
-    var initialPageConfig = listConfig.initialPage;
-    if (initialPageConfig){
-        config.itemsCount = initialPageConfig.itemsCount || 0;
-        config.hasMore = initialPageConfig.hasMore || false;
     }
 
     function attach(domElement, touchProvider){
@@ -83,13 +79,14 @@ var InfiniteList = function (listConfig) {
             if (runAnimation) {
                 requestAnimationFrame(animationStep);
             }
-        }
+        };
         requestAnimationFrame(animationStep);
     }
 
     function calculateHeights() {
+        var count = config.itemsCount();
         accumulatedRowHeights = [0];
-        for (var i = 1; i <= config.itemsCount || 0; ++i) {
+        for (var i = 1; i <= count || 0; ++i) {
             var currentRowHeight = config.itemHeightGetter ? config.itemHeightGetter(i - 1) : DEFAULT_ITEM_HEIGHT;
             accumulatedRowHeights[i] = accumulatedRowHeights[i - 1] + currentRowHeight;
         }
@@ -127,13 +124,14 @@ var InfiniteList = function (listConfig) {
             right: '0px',
             marginRight: '3px',
             opacity: 0.3,
-            width: '5px',
-            backgroundColor: "#333"
+            width: '2px',
+            backgroundColor: '#333',
+            borderRadius: '50px'
         });
         rootElement.appendChild(scrollbar);
         parentElement.appendChild(
             rootElement);
-    };
+    }
 
     /*
      Initialize the scroller
@@ -172,7 +170,7 @@ var InfiniteList = function (listConfig) {
         });
 
         renderedListItems.forEach(function(layer){
-            layersPool.addLayer(layer, true)
+            layersPool.addLayer(layer, true);
         });
         renderedListItems = [];
         calculateHeights();
@@ -195,10 +193,12 @@ var InfiniteList = function (listConfig) {
     function render() {
 
         var topVisibleIndex = getFirstVisibleItemAtHeight(topOffset),
-            bottomVisibleIndex = getFirstVisibleItemAtHeight(topOffset + visibleHeight);
+            bottomVisibleIndex = getFirstVisibleItemAtHeight(topOffset + visibleHeight),
+            count = config.itemsCount(),
+            hasMore = config.hasMore();
 
-        if (!config.hasMore){
-            bottomVisibleIndex = Math.min(bottomVisibleIndex, config.itemsCount - 1);
+        if (!hasMore){
+            bottomVisibleIndex = Math.min(bottomVisibleIndex, count - 1);
         }
         //remove non-visible layers from top and push them to layerPool
         while (renderedListItems.length > 0 && renderedListItems[0].getItemIndex() < topVisibleIndex) {
@@ -224,7 +224,7 @@ var InfiniteList = function (listConfig) {
                 if (renderBusy){
                     itemsNeedRerender[listItem.getItemIndex()] = listItem;
                 }
-            }
+            };
 
         //fill the gaps on top
         for (var i = topVisibleIndex; i < renderedStart; ++i) {
@@ -234,9 +234,11 @@ var InfiniteList = function (listConfig) {
         renderedListItems = topItems.concat(renderedListItems);
 
         //fill the gaps on bottom
-        for (var i = renderedListItems[renderedListItems.length - 1].getItemIndex() + 1; i <= Math.min(config.itemsCount - 1, bottomVisibleIndex); ++i) {
-            renderListItem(pushLayerAtIndex(i, renderedListItems));
-            itemRendered = true;
+        if (renderedListItems.length) {
+            for (i = renderedListItems[renderedListItems.length - 1].getItemIndex() + 1; i <= Math.min(count - 1, bottomVisibleIndex); ++i) {
+                renderListItem(pushLayerAtIndex(i, renderedListItems));
+                itemRendered = true;
+            }
         }
 
         var indicesForRerender = Object.keys(itemsNeedRerender);
@@ -248,7 +250,7 @@ var InfiniteList = function (listConfig) {
             }
         }
 
-        if (bottomVisibleIndex > config.itemsCount - 1){
+        if (bottomVisibleIndex > count - 1){
             renderLoadMore();
         }
 
@@ -274,7 +276,7 @@ var InfiniteList = function (listConfig) {
     }
 
     function getListHeight(){
-        return accumulatedRowHeights[accumulatedRowHeights.length - 1] + (!config.hasMore ? 0 : DEFAULT_ITEM_HEIGHT);
+        return accumulatedRowHeights[accumulatedRowHeights.length - 1] + (!config.hasMore() ? 0 : DEFAULT_ITEM_HEIGHT);
     }
 
     /*
@@ -283,23 +285,22 @@ var InfiniteList = function (listConfig) {
     function pushLayerAtIndex(index, listItems, identifier, height) {
         var layerIdentifier = identifier || (config.itemTypeGetter ? config.itemTypeGetter(index) : '');
         var layer = layersPool.borrowLayerWithIdentifier(layerIdentifier);
-        if (layer == null) {
+        if (layer == null) { //jshint ignore:line
             layer = new Layer(scrollElement);
         }
         //index, topOffset, renderer, width, height, itemIdentifier
         var itemHeight = height || config.itemHeightGetter && config.itemHeightGetter(index);
-        layer.attach(index, accumulatedRowHeights[index], rootElement.clientWidth - 9, itemHeight, layerIdentifier);
+        layer.attach(index, accumulatedRowHeights[index], rootElement.clientWidth, itemHeight, layerIdentifier);
         listItems.push(layer);
         return layer;
     }
 
     function renderLoadMore(){
+        var count = config.itemsCount();
         if (renderedListItems[renderedListItems.length - 1].getIdentifier() != '$LoadMore') {
-            var loadMoreLayer = pushLayerAtIndex(config.itemsCount, renderedListItems, '$LoadMore', -1);
-            config.loadMoreRenderer(config.itemsCount, loadMoreLayer.getDomElement());
-            config.pageFetcher(config.itemsCount, function(pageItemsCount, hasMore){
-                config.hasMore = hasMore;
-                config.itemsCount += pageItemsCount;
+            var loadMoreLayer = pushLayerAtIndex(count, renderedListItems, '$LoadMore', -1);
+            config.loadMoreRenderer(count, loadMoreLayer.getDomElement());
+            config.pageFetcher(count, function(){
                 refresh();
             });
         }
@@ -307,8 +308,9 @@ var InfiniteList = function (listConfig) {
 
     function getFirstVisibleItemAtHeight(top) {
         var i = 0;
+        var count = config.itemsCount();
 
-        while (i < config.itemsCount && accumulatedRowHeights[i + 1] < top) {
+        while (i < count && accumulatedRowHeights[i + 1] < top) {
             i++;
         }
         return i;
@@ -323,7 +325,7 @@ var InfiniteList = function (listConfig) {
         detach: detach,
         scrollToItem: scrollToItem,
         refresh: refresh
-    }
+    };
 
 };
 
