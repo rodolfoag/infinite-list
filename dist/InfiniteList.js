@@ -61,11 +61,11 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 1 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Scroller = __webpack_require__(6),
-	    Layer = __webpack_require__(2),
-	    LayersPool = __webpack_require__(3),
-	    TouchScroller = __webpack_require__(4),
-	    StyleHelpers = __webpack_require__(5);
+	var Scroller = __webpack_require__(2),
+	    Layer = __webpack_require__(4),
+	    LayersPool = __webpack_require__(6),
+	    TouchScroller = __webpack_require__(7),
+	    StyleHelpers = __webpack_require__(5),
 	    DEFAULT_ITEM_HEIGHT = 40,
 	    MIN_FPS = 30;
 
@@ -79,8 +79,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	            loadMoreRenderer: function(index, domElement){
 	                domElement.innerHTML = 'Loading...';
 	            },
-	            hasMore: false,
-	            itemsCount: 0
+	            hasMore: function () {
+	                return false;
+	            },
 	        },
 	        parentElement = null,
 	        rootElement = null,
@@ -97,15 +98,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	        needsRender = true,
 	        measuredFPS = 60;
 
-	    for (key in listConfig){
+	    for (var key in listConfig){
 	        if (listConfig.hasOwnProperty(key)){
 	            config[key] = listConfig[key];
 	        }
-	    }
-	    var initialPageConfig = listConfig.initialPage;
-	    if (initialPageConfig){
-	        config.itemsCount = initialPageConfig.itemsCount || 0;
-	        config.hasMore = initialPageConfig.hasMore || false;
 	    }
 
 	    function attach(domElement, touchProvider){
@@ -146,13 +142,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	            if (runAnimation) {
 	                requestAnimationFrame(animationStep);
 	            }
-	        }
+	        };
 	        requestAnimationFrame(animationStep);
 	    }
 
 	    function calculateHeights() {
+	        var count = config.itemsCount();
 	        accumulatedRowHeights = [0];
-	        for (var i = 1; i <= config.itemsCount || 0; ++i) {
+	        for (var i = 1; i <= count || 0; ++i) {
 	            var currentRowHeight = config.itemHeightGetter ? config.itemHeightGetter(i - 1) : DEFAULT_ITEM_HEIGHT;
 	            accumulatedRowHeights[i] = accumulatedRowHeights[i - 1] + currentRowHeight;
 	        }
@@ -190,13 +187,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	            right: '0px',
 	            marginRight: '3px',
 	            opacity: 0.3,
-	            width: '5px',
-	            backgroundColor: "#333"
+	            width: '2px',
+	            backgroundColor: '#333',
+	            borderRadius: '50px'
 	        });
 	        rootElement.appendChild(scrollbar);
 	        parentElement.appendChild(
 	            rootElement);
-	    };
+	    }
 
 	    /*
 	     Initialize the scroller
@@ -235,7 +233,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        });
 
 	        renderedListItems.forEach(function(layer){
-	            layersPool.addLayer(layer, true)
+	            layersPool.addLayer(layer, true);
 	        });
 	        renderedListItems = [];
 	        calculateHeights();
@@ -258,10 +256,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	    function render() {
 
 	        var topVisibleIndex = getFirstVisibleItemAtHeight(topOffset),
-	            bottomVisibleIndex = getFirstVisibleItemAtHeight(topOffset + visibleHeight);
+	            bottomVisibleIndex = getFirstVisibleItemAtHeight(topOffset + visibleHeight),
+	            count = config.itemsCount(),
+	            hasMore = config.hasMore();
 
-	        if (!config.hasMore){
-	            bottomVisibleIndex = Math.min(bottomVisibleIndex, config.itemsCount - 1);
+	        if (!hasMore){
+	            bottomVisibleIndex = Math.min(bottomVisibleIndex, count - 1);
 	        }
 	        //remove non-visible layers from top and push them to layerPool
 	        while (renderedListItems.length > 0 && renderedListItems[0].getItemIndex() < topVisibleIndex) {
@@ -287,7 +287,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                if (renderBusy){
 	                    itemsNeedRerender[listItem.getItemIndex()] = listItem;
 	                }
-	            }
+	            };
 
 	        //fill the gaps on top
 	        for (var i = topVisibleIndex; i < renderedStart; ++i) {
@@ -297,9 +297,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	        renderedListItems = topItems.concat(renderedListItems);
 
 	        //fill the gaps on bottom
-	        for (var i = renderedListItems[renderedListItems.length - 1].getItemIndex() + 1; i <= Math.min(config.itemsCount - 1, bottomVisibleIndex); ++i) {
-	            renderListItem(pushLayerAtIndex(i, renderedListItems));
-	            itemRendered = true;
+	        if (renderedListItems.length) {
+	            for (i = renderedListItems[renderedListItems.length - 1].getItemIndex() + 1; i <= Math.min(count - 1, bottomVisibleIndex); ++i) {
+	                renderListItem(pushLayerAtIndex(i, renderedListItems));
+	                itemRendered = true;
+	            }
 	        }
 
 	        var indicesForRerender = Object.keys(itemsNeedRerender);
@@ -311,7 +313,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	        }
 
-	        if (bottomVisibleIndex > config.itemsCount - 1){
+	        if (bottomVisibleIndex > count - 1){
 	            renderLoadMore();
 	        }
 
@@ -337,7 +339,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 
 	    function getListHeight(){
-	        return accumulatedRowHeights[accumulatedRowHeights.length - 1] + (!config.hasMore ? 0 : DEFAULT_ITEM_HEIGHT);
+	        return accumulatedRowHeights[accumulatedRowHeights.length - 1] + (!config.hasMore() ? 0 : DEFAULT_ITEM_HEIGHT);
 	    }
 
 	    /*
@@ -346,23 +348,22 @@ return /******/ (function(modules) { // webpackBootstrap
 	    function pushLayerAtIndex(index, listItems, identifier, height) {
 	        var layerIdentifier = identifier || (config.itemTypeGetter ? config.itemTypeGetter(index) : '');
 	        var layer = layersPool.borrowLayerWithIdentifier(layerIdentifier);
-	        if (layer == null) {
+	        if (layer == null) { //jshint ignore:line
 	            layer = new Layer(scrollElement);
 	        }
 	        //index, topOffset, renderer, width, height, itemIdentifier
 	        var itemHeight = height || config.itemHeightGetter && config.itemHeightGetter(index);
-	        layer.attach(index, accumulatedRowHeights[index], rootElement.clientWidth - 9, itemHeight, layerIdentifier);
+	        layer.attach(index, accumulatedRowHeights[index], rootElement.clientWidth, itemHeight, layerIdentifier);
 	        listItems.push(layer);
 	        return layer;
 	    }
 
 	    function renderLoadMore(){
+	        var count = config.itemsCount();
 	        if (renderedListItems[renderedListItems.length - 1].getIdentifier() != '$LoadMore') {
-	            var loadMoreLayer = pushLayerAtIndex(config.itemsCount, renderedListItems, '$LoadMore', -1);
-	            config.loadMoreRenderer(config.itemsCount, loadMoreLayer.getDomElement());
-	            config.pageFetcher(config.itemsCount, function(pageItemsCount, hasMore){
-	                config.hasMore = hasMore;
-	                config.itemsCount += pageItemsCount;
+	            var loadMoreLayer = pushLayerAtIndex(count, renderedListItems, '$LoadMore', -1);
+	            config.loadMoreRenderer(count, loadMoreLayer.getDomElement());
+	            config.pageFetcher(count, function(){
 	                refresh();
 	            });
 	        }
@@ -370,8 +371,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    function getFirstVisibleItemAtHeight(top) {
 	        var i = 0;
+	        var count = config.itemsCount();
 
-	        while (i < config.itemsCount && accumulatedRowHeights[i + 1] < top) {
+	        while (i < count && accumulatedRowHeights[i + 1] < top) {
 	            i++;
 	        }
 	        return i;
@@ -386,242 +388,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	        detach: detach,
 	        scrollToItem: scrollToItem,
 	        refresh: refresh
-	    }
+	    };
 
 	};
 
 	module.exports = InfiniteList;
 
+
 /***/ },
 /* 2 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var StyleHelpers = __webpack_require__(5);
-
-	var Layer = function (parentElement) {
-	    var listItemElement = null,
-	        identifier = "",
-	        itemIndex = -1;
-
-	    listItemElement = createListItemWrapperElement();
-	    parentElement.appendChild(listItemElement);
-
-	    function attach(index, topOffset, width, height, itemIdentifier) {
-	        itemIndex = index;
-	        StyleHelpers.applyElementStyle(listItemElement, {
-	            width: width + 'px',
-	            height: (height || DEFAULT_ITEM_HEIGHT) + 'px'
-	        });
-	        StyleHelpers.applyTransformStyle(listItemElement, 'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0' + ',' + topOffset + ', 0, 1)');
-	        identifier = itemIdentifier;
-	        return this;
-	    }
-
-	    function getItemIndex() {
-	        return itemIndex;
-	    }
-
-	    function getDomElement() {
-	        return listItemElement;
-	    }
-
-	    function getIdentifier() {
-	        return identifier;
-	    }
-
-	    function createListItemWrapperElement() {
-	        var el = document.createElement('div');
-	        StyleHelpers.applyElementStyle(el, {
-	            position: 'absolute',
-	            top: 0,
-	            left: 0
-	        });
-	        return el;
-	    }
-
-	    return {
-	        attach: attach,
-	        getItemIndex: getItemIndex,
-	        getDomElement: getDomElement,
-	        getIdentifier: getIdentifier
-	    }
-	};
-
-	module.exports = Layer;
-
-
-/***/ },
-/* 3 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var StyleHelpers = __webpack_require__(5),
-	    LayersPool = function () {
-	        var layersByIdentifier = {};
-
-	        function addLayer(layer, hide) {
-	            var layerIdentifier = layer.getIdentifier();
-	            if (layersByIdentifier[layerIdentifier] == null) {
-	                layersByIdentifier[layerIdentifier] = [];
-	            }
-	            layersByIdentifier[layerIdentifier].push(layer);
-	            if (hide){
-	                StyleHelpers.applyElementStyle(layer.getDomElement(), {display: 'none'})
-	            }
-	        }
-
-	        function borrowLayerWithIdentifier(identifier) {
-	            if (layersByIdentifier[identifier] == null) {
-	                return null;
-	            }
-	            var layer = layersByIdentifier[identifier].pop();
-	            if (layer != null) {
-	                StyleHelpers.applyElementStyle(layer.getDomElement(), {display: 'block'})
-	            }
-	            return layer;
-	        }
-
-	        return {
-	            addLayer: addLayer,
-	            borrowLayerWithIdentifier: borrowLayerWithIdentifier
-	        }
-	    }
-
-	module.exports = LayersPool;
-
-
-/***/ },
-/* 4 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var Scroller = __webpack_require__(6);
-
-	var TouchScroller = function(parentElement, callback, givenTouchProvider){
-
-	    var scroller = new Scroller(callback),
-	        touchProvider = givenTouchProvider || parentElement;
-
-	    var doTouchStart = function (e) {
-	            scroller.doTouchStart(e.touches, e.timeStamp);
-	            e.preventDefault();
-	        },
-	        doTouchMove =  function (e) {
-	            scroller.doTouchMove(e.touches, e.timeStamp, e.scale);
-	        },
-	        doTouchEnd = function (e) {
-	            scroller.doTouchEnd(e.timeStamp);
-	        },
-	        doTouchCancel = function (e) {
-	            e.preventDefault();
-	        };
-
-	    connectTouch();
-	    function connectTouch(){
-
-	        touchProvider.addEventListener('touchstart', doTouchStart);
-	        touchProvider.addEventListener('touchmove', doTouchMove);
-	        touchProvider.addEventListener('touchend', doTouchEnd);
-	        touchProvider.addEventListener('touchcancel', doTouchCancel);
-
-	        var mousedown = false;
-
-	        touchProvider.addEventListener("mousedown", function(e) {
-
-	            if (e.target.tagName.match(/input|textarea|select/i)) {
-	                return;
-	            }
-
-	            scroller.doTouchStart([{
-	                pageX: e.pageX,
-	                pageY: e.pageY
-	            }], e.timeStamp);
-
-	            mousedown = true;
-	            e.preventDefault();
-
-	        }, false);
-
-	        touchProvider.addEventListener("mousemove", function(e) {
-
-	            if (!mousedown) {
-	                return;
-	            }
-
-	            scroller.doTouchMove([{
-	                pageX: e.pageX,
-	                pageY: e.pageY
-	            }], e.timeStamp);
-
-	            mousedown = true;
-
-	        }, false);
-
-	        touchProvider.addEventListener("mouseup", function(e) {
-
-	            if (!mousedown) {
-	                return;
-	            }
-
-	            scroller.doTouchEnd(e.timeStamp);
-	            mousedown = false;
-
-	        }, false);
-
-	    }
-
-	    function disconnect(){
-	        touchProvider.removeEventListener('touchstart', doTouchStart);
-	        touchProvider.removeEventListener('touchmove', doTouchMove);
-	        touchProvider.removeEventListener('touchend', doTouchEnd);
-	        touchProvider.removeEventListener('touchcancel', doTouchCancel);
-	    }
-
-	    function setDimensions () {
-	        scroller.setDimensions.apply(scroller, arguments);
-	    }
-
-	    function scrollTo () {
-	        scroller.scrollTo.apply(scroller, arguments);
-	    }
-
-	    return {
-	        disconnect: disconnect,
-	        setDimensions: setDimensions,
-	        scrollTo: scrollTo
-	    }
-	}
-
-	module.exports = TouchScroller;
-
-/***/ },
-/* 5 */
-/***/ function(module, exports, __webpack_require__) {
-
-	
-	var applyElementStyle = function (element, styleObj) {
-	        Object.keys(styleObj).forEach(function (key) {
-	            if (element.style[key] != styleObj[key]) {
-	                element.style[key] = styleObj[key];
-	            }
-	        })
-	    },
-
-	    applyTransformStyle = function(element, transformValue){
-	        var styleObject = {};
-	        ['webkit', 'Moz', 'O', 'ms'].forEach(function(prefix){
-	                styleObject[prefix + 'Transform'] = transformValue;
-	            }
-	        );
-	        applyElementStyle(element, styleObject);
-	};
-
-	module.exports = {
-	    applyElementStyle: applyElementStyle,
-	    applyTransformStyle: applyTransformStyle
-	};
-
-
-/***/ },
-/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -639,7 +414,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 */
 
 	var Scroller;
-	var core = __webpack_require__(7);
+	var core = __webpack_require__(3);
 
 	(function() {
 		
@@ -1908,8 +1683,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 7 */
-/***/ function(module, exports, __webpack_require__) {
+/* 3 */
+/***/ function(module, exports) {
 
 	/*
 	 * Scroller
@@ -2144,6 +1919,234 @@ return /******/ (function(modules) { // webpackBootstrap
 		};
 	})(this);
 
+
+
+/***/ },
+/* 4 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var StyleHelpers = __webpack_require__(5);
+
+	var Layer = function (parentElement) {
+	    var listItemElement = null,
+	        identifier = "",
+	        itemIndex = -1;
+
+	    listItemElement = createListItemWrapperElement();
+	    parentElement.appendChild(listItemElement);
+
+	    function attach(index, topOffset, width, height, itemIdentifier) {
+	        itemIndex = index;
+	        StyleHelpers.applyElementStyle(listItemElement, {
+	            width: width + 'px',
+	            height: (height || DEFAULT_ITEM_HEIGHT) + 'px'
+	        });
+	        StyleHelpers.applyTransformStyle(listItemElement, 'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0' + ',' + topOffset + ', 0, 1)');
+	        identifier = itemIdentifier;
+	        return this;
+	    }
+
+	    function getItemIndex() {
+	        return itemIndex;
+	    }
+
+	    function getDomElement() {
+	        return listItemElement;
+	    }
+
+	    function getIdentifier() {
+	        return identifier;
+	    }
+
+	    function createListItemWrapperElement() {
+	        var el = document.createElement('div');
+	        StyleHelpers.applyElementStyle(el, {
+	            position: 'absolute',
+	            top: 0,
+	            left: 0
+	        });
+	        return el;
+	    }
+
+	    return {
+	        attach: attach,
+	        getItemIndex: getItemIndex,
+	        getDomElement: getDomElement,
+	        getIdentifier: getIdentifier
+	    }
+	};
+
+	module.exports = Layer;
+
+
+/***/ },
+/* 5 */
+/***/ function(module, exports) {
+
+	
+	var applyElementStyle = function (element, styleObj) {
+	        Object.keys(styleObj).forEach(function (key) {
+	            if (element.style[key] != styleObj[key]) {
+	                element.style[key] = styleObj[key];
+	            }
+	        })
+	    },
+
+	    applyTransformStyle = function(element, transformValue){
+	        var styleObject = {};
+	        ['webkit', 'Moz', 'O', 'ms'].forEach(function(prefix){
+	                styleObject[prefix + 'Transform'] = transformValue;
+	            }
+	        );
+	        applyElementStyle(element, styleObject);
+	};
+
+	module.exports = {
+	    applyElementStyle: applyElementStyle,
+	    applyTransformStyle: applyTransformStyle
+	};
+
+
+/***/ },
+/* 6 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var StyleHelpers = __webpack_require__(5),
+	    LayersPool = function () {
+	        var layersByIdentifier = {};
+
+	        function addLayer(layer, hide) {
+	            var layerIdentifier = layer.getIdentifier();
+	            if (layersByIdentifier[layerIdentifier] == null) {
+	                layersByIdentifier[layerIdentifier] = [];
+	            }
+	            layersByIdentifier[layerIdentifier].push(layer);
+	            if (hide){
+	                StyleHelpers.applyElementStyle(layer.getDomElement(), {display: 'none'})
+	            }
+	        }
+
+	        function borrowLayerWithIdentifier(identifier) {
+	            if (layersByIdentifier[identifier] == null) {
+	                return null;
+	            }
+	            var layer = layersByIdentifier[identifier].pop();
+	            if (layer != null) {
+	                StyleHelpers.applyElementStyle(layer.getDomElement(), {display: 'block'})
+	            }
+	            return layer;
+	        }
+
+	        return {
+	            addLayer: addLayer,
+	            borrowLayerWithIdentifier: borrowLayerWithIdentifier
+	        }
+	    }
+
+	module.exports = LayersPool;
+
+
+/***/ },
+/* 7 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var Scroller = __webpack_require__(2);
+
+	var TouchScroller = function(parentElement, callback, givenTouchProvider){
+
+	    var scroller = new Scroller(callback),
+	        touchProvider = givenTouchProvider || parentElement;
+
+	    var doTouchStart = function (e) {
+	            scroller.doTouchStart(e.touches, e.timeStamp);
+	        },
+	        doTouchMove =  function (e) {
+	            scroller.doTouchMove(e.touches, e.timeStamp, e.scale);
+	        },
+	        doTouchEnd = function (e) {
+	            scroller.doTouchEnd(e.timeStamp);
+	        },
+	        doTouchCancel = function (e) {
+	            e.preventDefault();
+	        };
+
+	    connectTouch();
+	    function connectTouch(){
+
+	        touchProvider.addEventListener('touchstart', doTouchStart);
+	        touchProvider.addEventListener('touchmove', doTouchMove);
+	        touchProvider.addEventListener('touchend', doTouchEnd);
+	        touchProvider.addEventListener('touchcancel', doTouchCancel);
+
+	        var mousedown = false;
+
+	        touchProvider.addEventListener("mousedown", function(e) {
+
+	            if (e.target.tagName.match(/input|textarea|select/i)) {
+	                return;
+	            }
+
+	            scroller.doTouchStart([{
+	                pageX: e.pageX,
+	                pageY: e.pageY
+	            }], e.timeStamp);
+
+	            mousedown = true;
+	            e.preventDefault();
+
+	        }, false);
+
+	        touchProvider.addEventListener("mousemove", function(e) {
+
+	            if (!mousedown) {
+	                return;
+	            }
+
+	            scroller.doTouchMove([{
+	                pageX: e.pageX,
+	                pageY: e.pageY
+	            }], e.timeStamp);
+
+	            mousedown = true;
+
+	        }, false);
+
+	        touchProvider.addEventListener("mouseup", function(e) {
+
+	            if (!mousedown) {
+	                return;
+	            }
+
+	            scroller.doTouchEnd(e.timeStamp);
+	            mousedown = false;
+
+	        }, false);
+
+	    }
+
+	    function disconnect(){
+	        touchProvider.removeEventListener('touchstart', doTouchStart);
+	        touchProvider.removeEventListener('touchmove', doTouchMove);
+	        touchProvider.removeEventListener('touchend', doTouchEnd);
+	        touchProvider.removeEventListener('touchcancel', doTouchCancel);
+	    }
+
+	    function setDimensions () {
+	        scroller.setDimensions.apply(scroller, arguments);
+	    }
+
+	    function scrollTo () {
+	        scroller.scrollTo.apply(scroller, arguments);
+	    }
+
+	    return {
+	        disconnect: disconnect,
+	        setDimensions: setDimensions,
+	        scrollTo: scrollTo
+	    };
+	};
+
+	module.exports = TouchScroller;
 
 
 /***/ }
