@@ -82,10 +82,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	            hasMore: function () {
 	                return false;
 	            },
+	            pullToRefresh: null
 	        },
 	        parentElement = null,
 	        rootElement = null,
 	        scrollElement = null,
+	        pullToRefreshElement = null,
 	        scrollbar = null,
 	        scroller = null,
 	        visibleHeight = 0,
@@ -109,6 +111,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        visibleHeight = parentElement.clientHeight;
 	        initializeRootElement(domElement);
 	        initializeScroller(domElement, touchProvider);
+	        initializePullToRefresh();
 	        window.addEventListener('resize', refresh.bind(this));
 	        runAnimationLoop();
 	        refresh();
@@ -171,6 +174,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	            bottom: 0
 	        });
 
+	        pullToRefreshElement = document.createElement('div');
+	        pullToRefreshElement.className = 'pull-to-refresh';
+	        scrollElement.appendChild(pullToRefreshElement);
+
 	        rootElement = document.createElement('div');
 	        StyleHelpers.applyElementStyle(rootElement, {
 	            position: 'relative',
@@ -216,6 +223,36 @@ return /******/ (function(modules) { // webpackBootstrap
 	        );
 	    }
 
+	    function initializePullToRefresh() {
+	        var conf = config.pullToRefresh;
+
+	        if (!conf) {
+	            return;
+	        }
+
+	        scroller.scroller.activatePullToRefresh(conf.height,
+	            function () {
+	                if (conf.activate) {
+	                    conf.activate(pullToRefreshElement);
+	                }
+	            },
+	            function () {
+	                if (conf.deactivate) {
+	                    conf.deactivate(pullToRefreshElement);
+	                }
+	            },
+	            function () {
+	                if (conf.start) {
+	                    conf.start(pullToRefreshElement);
+	                }
+	            }
+	        );
+	    }
+
+	    function finishPullToRefresh() {
+	        scroller.scroller.finishPullToRefresh();
+	    }
+
 	    function updateScrollerDimentions(parentElement){
 
 	        scroller.setDimensions(
@@ -224,6 +261,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	            parentElement.clientWidth,
 	            getListHeight()
 	        );
+
+	        if (config.pullToRefresh) {
+	            StyleHelpers.applyElementStyle(pullToRefreshElement, {
+	                width: parentElement.clientWidth + 'px'
+	            });
+	        }
 	    }
 
 	    function refresh(){
@@ -387,7 +430,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	        attach: attach,
 	        detach: detach,
 	        scrollToItem: scrollToItem,
-	        refresh: refresh
+	        refresh: refresh,
+	        finishPullToRefresh: finishPullToRefresh
 	    };
 
 	};
@@ -2054,7 +2098,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var TouchScroller = function(parentElement, callback, givenTouchProvider){
 
-	    var scroller = new Scroller(callback),
+	    var scroller = new Scroller(callback, { scrollingX: false }),
 	        touchProvider = givenTouchProvider || parentElement;
 
 	    var doTouchStart = function (e) {
@@ -2142,7 +2186,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return {
 	        disconnect: disconnect,
 	        setDimensions: setDimensions,
-	        scrollTo: scrollTo
+	        scrollTo: scrollTo,
+	        scroller: scroller
 	    };
 	};
 

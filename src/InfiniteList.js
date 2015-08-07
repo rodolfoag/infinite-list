@@ -19,10 +19,12 @@ var InfiniteList = function (listConfig) {
             hasMore: function () {
                 return false;
             },
+            pullToRefresh: null
         },
         parentElement = null,
         rootElement = null,
         scrollElement = null,
+        pullToRefreshElement = null,
         scrollbar = null,
         scroller = null,
         visibleHeight = 0,
@@ -46,6 +48,7 @@ var InfiniteList = function (listConfig) {
         visibleHeight = parentElement.clientHeight;
         initializeRootElement(domElement);
         initializeScroller(domElement, touchProvider);
+        initializePullToRefresh();
         window.addEventListener('resize', refresh.bind(this));
         runAnimationLoop();
         refresh();
@@ -108,6 +111,10 @@ var InfiniteList = function (listConfig) {
             bottom: 0
         });
 
+        pullToRefreshElement = document.createElement('div');
+        pullToRefreshElement.className = 'pull-to-refresh';
+        scrollElement.appendChild(pullToRefreshElement);
+
         rootElement = document.createElement('div');
         StyleHelpers.applyElementStyle(rootElement, {
             position: 'relative',
@@ -153,6 +160,36 @@ var InfiniteList = function (listConfig) {
         );
     }
 
+    function initializePullToRefresh() {
+        var conf = config.pullToRefresh;
+
+        if (!conf) {
+            return;
+        }
+
+        scroller.scroller.activatePullToRefresh(conf.height,
+            function () {
+                if (conf.activate) {
+                    conf.activate(pullToRefreshElement);
+                }
+            },
+            function () {
+                if (conf.deactivate) {
+                    conf.deactivate(pullToRefreshElement);
+                }
+            },
+            function () {
+                if (conf.start) {
+                    conf.start(pullToRefreshElement);
+                }
+            }
+        );
+    }
+
+    function finishPullToRefresh() {
+        scroller.scroller.finishPullToRefresh();
+    }
+
     function updateScrollerDimentions(parentElement){
 
         scroller.setDimensions(
@@ -161,6 +198,12 @@ var InfiniteList = function (listConfig) {
             parentElement.clientWidth,
             getListHeight()
         );
+
+        if (config.pullToRefresh) {
+            StyleHelpers.applyElementStyle(pullToRefreshElement, {
+                width: parentElement.clientWidth + 'px'
+            });
+        }
     }
 
     function refresh(){
@@ -324,7 +367,8 @@ var InfiniteList = function (listConfig) {
         attach: attach,
         detach: detach,
         scrollToItem: scrollToItem,
-        refresh: refresh
+        refresh: refresh,
+        finishPullToRefresh: finishPullToRefresh
     };
 
 };

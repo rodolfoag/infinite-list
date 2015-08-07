@@ -2,7 +2,7 @@ var Scroller = require('../vendor/zynga-scroller/Scroller');
 
 var TouchScroller = function(parentElement, callback, givenTouchProvider){
 
-    var scroller = new Scroller(callback),
+    var scroller = new Scroller(callback, { scrollingX: false }),
         touchProvider = givenTouchProvider || parentElement;
 
     var doTouchStart = function (e) {
@@ -90,7 +90,8 @@ var TouchScroller = function(parentElement, callback, givenTouchProvider){
     return {
         disconnect: disconnect,
         setDimensions: setDimensions,
-        scrollTo: scrollTo
+        scrollTo: scrollTo,
+        scroller: scroller
     };
 };
 
