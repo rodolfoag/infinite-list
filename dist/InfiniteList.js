@@ -175,7 +175,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        });
 
 	        pullToRefreshElement = document.createElement('div');
-	        pullToRefreshElement.className = 'pull-to-refresh';
 	        scrollElement.appendChild(pullToRefreshElement);
 
 	        rootElement = document.createElement('div');
@@ -230,23 +229,33 @@ return /******/ (function(modules) { // webpackBootstrap
 	            return;
 	        }
 
+	        pullToRefreshElement.innerHTML = '<span></span>';
+	        pullToRefreshElement.className = 'pull-to-refresh inactive';
+
 	        scroller.scroller.activatePullToRefresh(conf.height,
 	            function () {
+	                pullToRefreshElement.className = 'pull-to-refresh active';
 	                if (conf.activate) {
 	                    conf.activate(pullToRefreshElement);
 	                }
 	            },
 	            function () {
+	                pullToRefreshElement.className = 'pull-to-refresh inactive';
 	                if (conf.deactivate) {
 	                    conf.deactivate(pullToRefreshElement);
 	                }
 	            },
 	            function () {
+	                pullToRefreshElement.className = 'pull-to-refresh running';
 	                if (conf.start) {
 	                    conf.start(pullToRefreshElement);
 	                }
 	            }
 	        );
+	    }
+
+	    function triggerPullToRefresh() {
+	        scroller.scroller.triggerPullToRefresh();
 	    }
 
 	    function finishPullToRefresh() {
@@ -431,6 +440,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        detach: detach,
 	        scrollToItem: scrollToItem,
 	        refresh: refresh,
+	        triggerPullToRefresh: triggerPullToRefresh,
 	        finishPullToRefresh: finishPullToRefresh
 	    };
 

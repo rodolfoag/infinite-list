@@ -112,7 +112,6 @@ var InfiniteList = function (listConfig) {
         });
 
         pullToRefreshElement = document.createElement('div');
-        pullToRefreshElement.className = 'pull-to-refresh';
         scrollElement.appendChild(pullToRefreshElement);
 
         rootElement = document.createElement('div');
@@ -167,23 +166,33 @@ var InfiniteList = function (listConfig) {
             return;
         }
 
+        pullToRefreshElement.innerHTML = '<span></span>';
+        pullToRefreshElement.className = 'pull-to-refresh inactive';
+
         scroller.scroller.activatePullToRefresh(conf.height,
             function () {
+                pullToRefreshElement.className = 'pull-to-refresh active';
                 if (conf.activate) {
                     conf.activate(pullToRefreshElement);
                 }
             },
             function () {
+                pullToRefreshElement.className = 'pull-to-refresh inactive';
                 if (conf.deactivate) {
                     conf.deactivate(pullToRefreshElement);
                 }
             },
             function () {
+                pullToRefreshElement.className = 'pull-to-refresh running';
                 if (conf.start) {
                     conf.start(pullToRefreshElement);
                 }
             }
         );
+    }
+
+    function triggerPullToRefresh() {
+        scroller.scroller.triggerPullToRefresh();
     }
 
     function finishPullToRefresh() {
@@ -368,6 +377,7 @@ var InfiniteList = function (listConfig) {
         detach: detach,
         scrollToItem: scrollToItem,
         refresh: refresh,
+        triggerPullToRefresh: triggerPullToRefresh,
         finishPullToRefresh: finishPullToRefresh
     };
 
