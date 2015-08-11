@@ -146,6 +146,7 @@ var InfiniteList = function (listConfig) {
      I have used ZyngaScroller for that: https://github.com/zynga/scroller
      */
     function initializeScroller(parentElement, touchProvider) {
+        var lastTop;
 
         scroller = new TouchScroller(
             parentElement,
@@ -153,6 +154,18 @@ var InfiniteList = function (listConfig) {
             function (left, top) {
                 topOffset = top || 0;
                 needsRender = true;
+                lastTop = top || 0;
+
+                setTimeout(function () {
+                    if (lastTop !== top) {
+                        return;
+                    }
+                    if (scrollbar.style.opacity !== '0') {
+                        StyleHelpers.applyElementStyle(scrollbar, {
+                            opacity: 0
+                        });
+                    }
+                }, 500);
             },
 
             touchProvider
@@ -197,6 +210,14 @@ var InfiniteList = function (listConfig) {
 
     function finishPullToRefresh() {
         scroller.scroller.finishPullToRefresh();
+    }
+
+    function enableScrollY() {
+        scroller.scroller.options.scrollingY = true;
+    }
+
+    function disableScrollY() {
+        scroller.scroller.options.scrollingY = false;
     }
 
     function updateScrollerDimentions(parentElement){
@@ -322,7 +343,9 @@ var InfiniteList = function (listConfig) {
             heightInPx = scrollbarHeight + 'px';
 
         StyleHelpers.applyElementStyle(scrollbar, {
-            height: heightInPx
+            height: heightInPx,
+            opacity: '0.3',
+            transition: 'opacity 0.3s'
         });
         StyleHelpers.applyTransformStyle(scrollbar, 'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0' + ',' + ( scrollbarPos) + ', 0, 1)');
     }
@@ -378,7 +401,9 @@ var InfiniteList = function (listConfig) {
         scrollToItem: scrollToItem,
         refresh: refresh,
         triggerPullToRefresh: triggerPullToRefresh,
-        finishPullToRefresh: finishPullToRefresh
+        finishPullToRefresh: finishPullToRefresh,
+        enableScrollY: enableScrollY,
+        disableScrollY: disableScrollY
     };
 
 };
