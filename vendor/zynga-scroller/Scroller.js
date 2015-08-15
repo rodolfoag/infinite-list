@@ -716,6 +716,10 @@ var core = require('./Animate');
 				return;
 			}
 
+			if (!self.options.scrollingY) {
+				return;
+			}
+
 
 			var currentTouchLeft, currentTouchTop;
 

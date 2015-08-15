@@ -82,6 +82,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            hasMore: function () {
 	                return false;
 	            },
+	            onScroll: null,
 	            pullToRefresh: null
 	        },
 	        parentElement = null,
@@ -227,9 +228,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        StyleHelpers.applyElementStyle(scrollbar, {
 	                            opacity: 0
 	                        });
-	                        console.log('scroll hidden');
 	                    }
 	                }, 500);
+
+	                if (config.onScroll) {
+	                    config.onScroll(left, top);
+	                }
 	            },
 
 	            touchProvider
@@ -1194,6 +1198,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 				// Ignore event when tracking is not enabled (event might be outside of element)
 				if (!self.__isTracking) {
+					return;
+				}
+
+				if (!self.options.scrollingY) {
 					return;
 				}
 

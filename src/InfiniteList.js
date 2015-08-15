@@ -19,6 +19,7 @@ var InfiniteList = function (listConfig) {
             hasMore: function () {
                 return false;
             },
+            onScroll: null,
             pullToRefresh: null
         },
         parentElement = null,
@@ -166,6 +167,10 @@ var InfiniteList = function (listConfig) {
                         });
                     }
                 }, 500);
+
+                if (config.onScroll) {
+                    config.onScroll(left, top);
+                }
             },
 
             touchProvider
